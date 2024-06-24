@@ -1,0 +1,4 @@
+LabJackPython>=2.1.0
+PyVISA>=1.14.1
+RsInstrument>=1.82.1
+numpy
