@@ -33,9 +33,9 @@ class fswp50:
             head_xdata: csv文件head line中对x轴数据的注释，例如'frequency (Hz)'
             head_ydata: csv文件head line中对y轴数据的注释，例如'Phase Noise (dBc/Hz)'
         """
-        # trace_data = self.RsInst.query('Trace:DATA? TRACe'+str(trace_index))  # Read y data of trace N
-        # csv_trace_data = trace_data.split(",")  # Slice the amplitude list
-        csv_trace_data = self.RsInst.query_bin_or_ascii_float_list('FORM ASC;:TRAC? TRACE'+str(trace_index))
+        trace_data = self.RsInst.query('Trace:DATA? TRACe'+str(trace_index))  # Read y data of trace N
+        csv_trace_data = trace_data.split(",")  # Slice the amplitude list
+        # csv_trace_data = self.RsInst.query_bin_or_ascii_float_list('FORM ASC;:TRAC? TRACE'+str(trace_index))
         trace_len = len(csv_trace_data)  # Get number of elements of this list
 
         # Now write values into file
@@ -65,20 +65,21 @@ class fswp50:
         csv_trace_data = self.RsInst.query_bin_or_ascii_float_list('FORM ASC;:TRAC? TRACE'+str(trace_index))
         trace_len = len(csv_trace_data)  # Get number of elements of this list
 
+
         # Reconstruct x data (frequency for each point) as it can not be directly read from the instrument
-        start_freq = self.RsInst.query_float('FREQuency:STARt?')
-        stop_freq = self.RsInst.query_float('FREQuency:STOP?')
-        step_size = (stop_freq-start_freq) / (trace_len-1)
+        # start_freq = self.RsInst.query_float('FREQuency:STARt?')
+        # stop_freq = self.RsInst.query_float('FREQuency:STOP?')
+        # step_size = (stop_freq-start_freq) / (trace_len-1)
 
         # Now write values into file
         file = open(filename, 'w')  # Open file for writing
         file.write("Offset Frequency (Hz),Phase Noise (dBc/Hz)\n")  # Write the headline
         x = 0  # Set counter to 0 as list starts with 0
         while x < int(trace_len)-1:  # Perform loop until all sweep points are covered
-            file.write(f'{(start_freq + x * step_size):.1f}')  # Write adequate frequency information
+            file.write(f'{csv_trace_data[x]:.5f}')  # Write adequate frequency information
             file.write(",")
             PN = float(csv_trace_data[x+1])
-            file.write(f'{PN:.2f}')  # Write adequate phase noise information
+            file.write(f'{PN:.5f}')  # Write adequate phase noise information
             file.write("\n")
             x = x+2
         file.close()  # CLose the file
@@ -228,12 +229,12 @@ class fswp50:
         if offset < start_freq or offset > stop_freq:
             print("Offset is out of bound!")
             return
-
+        self.RsInst.write_str_with_opc('DISP:TRAC:Y:AUTO OFF')      #不加这一行的话，有时候会出现y轴scale自动变化
         self.RsInst.write('CALC:SNO:USER ON')
         self.RsInst.write('CALC:SNO1:STAT ON')     #User Defined marker 1 is used to get spot PN
         self.RsInst.write('CALC:SNO1:X ' + str(offset))
         spot_PN = self.RsInst.query('CALC:SNO1:TRAC' + str(trace_index) + ':Y?')
-        self.RsInst.write('CALC:SNO:USER OFF')
+        self.RsInst.write('CALC:SNO:USER ON')    #如果turn off的话，PN曲线上就没有SN1~SN6的marker图标了
         return float(spot_PN)
 
     def set_pow_max_current(self, max_current:float ):
@@ -261,6 +262,7 @@ class fswp50:
         """
         执行run single，并等待完成
         """
+        # self.RsInst.write_str_with_opc('DISP:TRAC:Y:AUTO ON')
         self.RsInst.write_str_with_opc('INIT:IMM')
 
     def get_freq(self):
